@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify
-from flask_sqlalchemy import SQLAlchemy
-import threading
-
+Line 1: from flask import Flask, request, jsonify
+Line 2: import json
+Line 3: import os
+Line 4: import threading
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///lensconnect.db'
 db = SQLAlchemy(app)
@@ -42,6 +42,16 @@ PRICES = {
     30: "1000SMS_7DAYS", 
     101: "1500SMS_30DAYS",
 }
+@app.route('/c2b/validation', methods=['POST'])
+def validation():
+    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
+
+@app.route('/c2b/confirmation', methods=['POST'])
+def confirmation():
+    data = request.get_json()
+    print("C2B Payment Received:", json.dumps(data, indent=4))
+    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
+    return jsonify(response)
 
 def process_bundle(phone, amount, mpesa_code):
     with app.app_context():  # <-- Add this line
@@ -72,3 +82,21 @@ def confirmation():
 
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
+    from flask import request, jsonify
+import json
+
+@app.route('/c2b/validation', methods=['POST'])
+def validation():
+    # Safaricom asks: "Can I send money?" We say: "Yes 0 = Success"
+    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
+    return jsonify(response)
+
+@app.route('/c2b/confirmation', methods=['POST'])
+def confirmation():
+    # Safaricom sends the real M-Pesa data here after payment
+    data = request.get_json()
+    print("C2B Payment Received:", json.dumps(data, indent=4))
+    # TODO: Later we will use process_bundle() here
+    
+    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
+    return jsonify(response)
