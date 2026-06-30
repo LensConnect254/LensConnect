@@ -46,6 +46,11 @@ def process_bundle(phone, amount, mpesa_code):
         if txn:
             txn.status = "FULFILLED"
             db.session.commit()
+        print(f"SIMULATED: Sending {bundle} to {phone}. Code: {mpesa_code}")
+        txn = Transaction.query.filter_by(mpesa_code=mpesa_code).first()
+        if txn:
+            txn.status = "FULFILLED"
+            db.session.commit()
 
 # ===== STEP 1: SIGNUP/LOGIN ROUTES =====
 SIGNUP_FORM = """
@@ -163,7 +168,6 @@ def topup():
     db.session.commit()
     return redirect('/dashboard')
 
-if __name__ == "__main__":
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
