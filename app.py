@@ -48,20 +48,11 @@ PRICES = {
     30: "1000SMS_7DAYS", 
     101: "1500SMS_30DAYS",
 }
-@app.route('/c2b/validation', methods=['POST'])
-def validation():
-    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
-
-@app.route('/c2b/confirmation', methods=['POST'])
-def confirmation():
-    data = request.get_json()
-    print("C2B Payment Received:", json.dumps(data, indent=4))
-    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
-    return jsonify(response)
 
 def process_bundle(phone, amount, mpesa_code):
     with app.app_context():  # <-- Add this line
-        print(f"SIMULATED: Sending {bundle} to {phone}. Code: {mpesa_code}")
+    bundle = PRICES.get(amount, "UNKNOWN")
+    print(f"SIMULATED: Sending {bundle} to {phone}. Code: {mpesa_code}")
         txn = Transaction.query.filter_by(mpesa_code=mpesa_code).first()
         if txn:
             txn.status = "FULFILLED" 
@@ -70,11 +61,11 @@ def process_bundle(phone, amount, mpesa_code):
 def home():
     return "LensConnect API is running"
 @app.route('/mpesa/validation', methods=['POST'])
-def validation():
+def mpesa_validation():
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"})
 
 @app.route('/mpesa/confirmation', methods=['POST'])
-def confirmation():
+def mpesa_confirmation():
     data = request.get_json()
     amount = float(data['TransAmount'])
     phone = data['MSISDN']
@@ -85,27 +76,15 @@ def confirmation():
 
     threading.Thread(target=process_bundle, args=(phone, amount, mpesa_code)).start()
     return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"})
+def process_bundle(phone, amount, mpesa_code):
+    with app.app_context():
+        bundle = PRICES.get(amount, "UNKNOWN")
+        print(f"SIMULATED: Sending {bundle} to {phone}. Code: {mpesa_code}")
+        txn = Transaction.query.filter_by(mpesa_code=mpesa_code).first()
+        if txn:
+            txn.status = "FULFILLED" 
+            db.session.commit()
 
-if __name__ == '__main__':
-    app.run(port=5000, debug=True)
-    from flask import request, jsonify
-import json
-
-@app.route('/c2b/validation', methods=['POST'])
-def validation():
-    # Safaricom asks: "Can I send money?" We say: "Yes 0 = Success"
-    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
-    return jsonify(response)
-
-@app.route('/c2b/confirmation', methods=['POST'])
-def confirmation():
-    # Safaricom sends the real M-Pesa data here after payment
-    data = request.get_json()
-    print("C2B Payment Received:", json.dumps(data, indent=4))
-    # TODO: Later we will use process_bundle() here
-    
-    response = {"ResultCode": 0, "ResultDesc": "Accepted"}
-    return jsonify(response)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
