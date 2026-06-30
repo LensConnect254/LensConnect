@@ -1,11 +1,19 @@
 from flask import Flask, request, jsonify, render_template_string, redirect, session
 import os 
 import threading
+import requests
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "lensconnectdevkey123") # Change this on Render later
+
+# ===== M-PESA SANDBOX CONFIG =====
+CONSUMER_KEY = os.environ.get('MPESA_CONSUMER_KEY') 
+CONSUMER_SECRET = os.environ.get('MPESA_CONSUMER_SECRET')
+BUSINESS_SHORT_CODE = '174379' # Sandbox test shortcode
+PASSKEY = 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919' # Sandbox passkey
+CALLBACK_URL = 'https://lensconnect-abc123.onrender.com/mpesa/confirmation'
 
 db_path = os.path.join(os.path.dirname(__file__), 'instance', 'lensconnect.db')
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
