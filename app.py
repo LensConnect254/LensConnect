@@ -1,11 +1,15 @@
-Line 1: from flask import Flask, request, jsonify
-Line 2: import json
-Line 3: import os
-Line 4: import threading
+from flask import Flask, request, jsonify
+import json
+import os 
+import threading
+from flask_sqlalchemy import SQLAlchemy
+
 app = Flask(__name__)
-Line 6: db_path = os.path.join(os.path.dirname(__file__), 'instance', 'lensconnect.db')
-Line 7: os.makedirs(os.path.dirname(db_path), exist_ok=True)
-Line 8: app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
+db_path = os.path.join(os.path.dirname(__file__), 'instance', 'lensconnect.db')
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+
 db = SQLAlchemy(app)
 
 class Transaction(db.Model):
