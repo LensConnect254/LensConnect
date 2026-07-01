@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 import os, json
 from fpdf import FPDF
 from io import BytesIO
-from serpapi import GoogleSearch
+from serpapi.google_search import GoogleSearch
 import praw
 import enum
 
