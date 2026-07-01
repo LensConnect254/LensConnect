@@ -30,6 +30,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    phone = db.Column(db.String(20), unique=True, nullable=True)
     password_hash = db.Column(db.String(256), nullable=False)
     balance = db.Column(db.Float, default=0.0)
 
@@ -43,13 +44,12 @@ class Transaction(db.Model):
 
 with app.app_context(): db.create_all()
 
-# ===== ALL BUNDLES FROM YOUR SCREENSHOT =====
 PRICES = {
-    19: "1GB_1HR", 20: "250MB_24HRS", 49: "350MB_7DAYS", 50: "1.5GB_3HRS", 
-    55: "1.25GB_TILL_MIDNIGHT", 99: "1GB_24HRS", 300: "2.5GB_7DAYS", 700: "6GB_7DAYS",
-    23: "1GB_1HR_TUNUKIWA", 51: "1.5GB_3HRS_TUNUKIWA", 110: "2GB_24HRS_TUNUKIWA",
-    22: "43MINS_3HRS", 52: "50MINS_TILL_MID", 5: "20SMS_24HRS", 
-    10: "200SMS_24HRS", 30: "1000SMS_7DAYS", 101: "1500SMS_30DAYS",
+    19: "1GB 1HR", 20: "250MB 24HRS", 49: "350MB 7DAYS", 50: "1.5GB 3HRS", 
+    55: "1.25GB TILL MIDNIGHT", 99: "1GB 24HRS", 300: "2.5GB 7DAYS", 700: "6GB 7DAYS",
+    23: "1GB 1HR TUNUKIWA", 51: "1.5GB 3HRS TUNUKIWA", 110: "2GB 24HRS TUNUKIWA",
+    22: "43MINS 3HRS", 52: "50MINS TILL MID", 5: "20SMS 24HRS", 
+    10: "200SMS 24HRS", 30: "1000SMS 7DAYS", 101: "1500SMS 30DAYS",
 }
 
 def process_bundle(phone, amount, mpesa_code):
@@ -60,90 +60,40 @@ def process_bundle(phone, amount, mpesa_code):
         txn.status = "FULFILLED"
         db.session.commit()
 
-# ===== M-PESA STYLE LAYOUT =====
-BASE_LAYOUT = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LensConnect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style> body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; }.bg-mpesa { background: linear-gradient(135deg, #00A651 0%, #006D3A 100%); } </style>
-</head>
-<body class="pb-24">
-    <div class="max-w-md mx-auto bg-gray-100 min-h-screen relative">
-        {{ content|safe }}
-    </div>
-    {% if show_nav %}
-    <nav class="fixed bottom-0 w-full max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around py-2 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <a href="/dashboard" class="flex flex-col items-center text-green-600"><i data-lucide="home" class="w-6 h-6"></i><span class="text-xs">Home</span></a>
-        <a href="/bundles" class="flex flex-col items-center text-gray-400"><i data-lucide="package" class="w-6 h-6"></i><span class="text-xs">Bundles</span></a>
-        <a href="#" class="flex flex-col items-center text-gray-400"><i data-lucide="file-text" class="w-6 h-6"></i><span class="text-xs">Bills</span></a>
-        <a href="#" class="flex flex-col items-center text-gray-400"><i data-lucide="user" class="w-6 h-6"></i><span class="text-xs">Account</span></a>
-    </nav>
-    <script>lucide.createIcons();</script>
-    {% endif %}
-</body>
-</html>
-"""
+AI_INSIGHTS = {"hot_bundle": "1GB 24HRS","trend_pct": 42,"forecast": 1240.50,"alert": "Tunukiwa 2GB now Ksh 99 ↓"}
 
-# ===== PAGE CONTENT BLOCKS =====
-AUTH_CONTENT = """<div class="p-8 pt-16"><h1 class="text-3xl font-bold text-gray-800">LensConnect</h1><p class="text-gray-500 mb-8">Buy Data, SMS, Minutes</p>{{ form_content|safe }}</div>"""
-SIGNUP_FORM = """<form method="post" class="space-y-4"><input name="email" type="email" placeholder="Email" required class="w-full px-4 py-3 bg-white border rounded-xl"><input name="password" type="password" placeholder="Password" required class="w-full px-4 py-3 bg-white border rounded-xl"><button class="w-full py-3 font-bold text-white bg-green-600 rounded-xl">Signup</button></form><p class="text-sm text-center mt-4">Have an account? <a href="/login" class="text-green-600 font-semibold">Login</a></p>"""
-LOGIN_FORM = """<form method="post" class="space-y-4"><input name="email" type="email" placeholder="Email" required class="w-full px-4 py-3 bg-white border rounded-xl"><input name="password" type="password" placeholder="Password" required class="w-full px-4 py-3 bg-white border rounded-xl"><button class="w-full py-3 font-bold text-white bg-green-600 rounded-xl">Login</button></form><p class="text-sm text-center mt-4">No account? <a href="/signup" class="text-green-600 font-semibold">Signup</a></p>"""
-
-DASHBOARD_CONTENT = """
-<div class="p-4">
-    <div class="flex justify-between items-center mb-4">
-        <p class="text-lg font-semibold">Hello {email} 👋</p>
-        <a href="/logout"><i data-lucide="log-out" class="w-6 h-6 text-gray-600"></i></a>
-    </div>
-    <div class="bg-mpesa text-white p-5 rounded-2xl shadow-lg">
-        <p class="text-sm opacity-80">Wallet Balance</p>
-        <p class="text-4xl font-bold my-2">Ksh {balance}</p>
-        <div class="flex gap-3 mt-4">
-            <button class="flex-1 bg-white/20 py-2 rounded-lg text-sm">Statement</button>
-            <a href="/bundles" class="flex-1 bg-white/20 py-2 rounded-lg text-sm text-center">Top Up</a>
+def page(content_html, show_nav=False, nav='home'):
+    nav_html = ""
+    if show_nav:
+        nav_html = f"""
+        <nav class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-slate-800/60 backdrop-blur-xl border-slate-700 rounded-2xl flex justify-around py-3 shadow-2xl">
+            <a href="/dashboard" class="flex flex-col items-center {'text-emerald-400' if nav=='home' else 'text-slate-400'}"><i data-lucide="home" class="w-6 h-6"></i><span class="text-xs">Home</span></a>
+            <a href="/bundles" class="flex flex-col items-center {'text-emerald-400' if nav=='bundles' else 'text-slate-400'}"><i data-lucide="package" class="w-6 h-6"></i><span class="text-xs">Bundles</span></a>
+            <a href="/ai-insights" class="flex flex-col items-center {'text-emerald-400' if nav=='ai' else 'text-slate-400'}"><i data-lucide="zap" class="w-6 h-6"></i><span class="text-xs">AI</span></a>
+            <a href="#" class="flex flex-col items-center text-slate-400"><i data-lucide="user" class="w-6 h-6"></i><span class="text-xs">Account</span></a>
+        </nav>
+        <script>lucide.createIcons();</script>
+        """
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>LensConnect Pro</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/lucide@latest"></script>
+        <style> body {{ font-family: 'Inter', sans-serif; background-color: #0F172A; }} </style>
+    </head>
+    <body class="pb-24 text-slate-200">
+        <div class="max-w-md mx-auto min-h-screen relative">
+            {content_html}
         </div>
-    </div>
-    <div class="bg-white p-4 rounded-2xl mt-6">
-        <div class="flex justify-between items-center mb-3"><p class="font-semibold">Quick Actions</p><a href="/bundles" class="text-sm text-green-600">Manage</a></div>
-        <div class="grid grid-cols-4 gap-4 text-center">
-            <a href="/bundles?tab=data" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center"><i data-lucide="smartphone" class="w-7 h-7 text-green-600"></i></div><span class="text-xs text-gray-600">Data</span></a>
-            <a href="/bundles?tab=minutes" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center"><i data-lucide="phone" class="w-7 h-7 text-blue-600"></i></div><span class="text-xs text-gray-600">Minutes</span></a>
-            <a href="/bundles?tab=sms" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center"><i data-lucide="message-square" class="w-7 h-7 text-purple-600"></i></div><span class="text-xs text-gray-600">SMS</span></a>
-            <a href="/bundles?tab=tunukiwa" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center"><i data-lucide="zap" class="w-7 h-7 text-yellow-600"></i></div><span class="text-xs text-gray-600">Tunukiwa</span></a>
-        </div>
-    </div>
-</div>
-"""
+        {nav_html}
+    </body>
+    </html>
+    """
 
-BUNDLES_PAGE = """
-<div class="p-4">
-    <a href="/dashboard" class="flex items-center gap-2 mb-4 text-gray-600"><i data-lucide="arrow-left"></i> Back</a>
-    <div class="flex border-b mb-4">
-        <a href="/bundles?tab=data" class="flex-1 py-2 text-center font-semibold {% if tab=='data' %}border-b-2 border-green-600 text-green-600{% else %}text-gray-500{% endif %}">Data</a>
-        <a href="/bundles?tab=minutes" class="flex-1 py-2 text-center font-semibold {% if tab=='minutes' %}border-b-2 border-green-600 text-green-600{% else %}text-gray-500{% endif %}">Minutes</a>
-        <a href="/bundles?tab=sms" class="flex-1 py-2 text-center font-semibold {% if tab=='sms' %}border-b-2 border-green-600 text-green-600{% else %}text-gray-500{% endif %}">SMS</a>
-    </div>
-    <div class="space-y-3">
-        {% for amount, name in bundles %}
-        <form action="/stkpush" method="post" class="bg-white p-4 rounded-xl flex justify-between items-center shadow-sm">
-            <input type="hidden" name="amount" value="{{ amount }}">
-            <div>
-                <p class="font-bold">{{ name.replace('_', ' ') }}</p>
-                <p class="text-sm text-gray-500">Valid: {{ name.split('_')[-1] }}</p>
-            </div>
-            <button class="bg-green-600 text-white font-bold px-5 py-2 rounded-lg">Ksh {{ amount }}</button>
-        </form>
-        {% endfor %}
-    </div>
-</div>
-"""
-
-# ===== ROUTES =====
 @app.route('/')
 def home(): return redirect('/signup')
     
@@ -151,12 +101,24 @@ def home(): return redirect('/signup')
 def signup():
     if request.method == 'POST':
         email, password = request.form['email'], request.form['password']
-        if User.query.filter_by(email=email).first(): return render_template_string(BASE_LAYOUT, content=AUTH_CONTENT.format(form_content="Email exists. <a href='/login'>Login</a>"), show_nav=False)
+        if User.query.filter_by(email=email).first(): return page("<div class='p-8'>Email exists. <a href='/login' class='text-emerald-400'>Login</a></div>", False)
         user = User(email=email, password_hash=generate_password_hash(password))
         db.session.add(user); db.session.commit()
         session['user_id'] = user.id
         return redirect('/dashboard')
-    return render_template_string(BASE_LAYOUT, content=AUTH_CONTENT.format(form_content=SIGNUP_FORM), show_nav=False)
+    content = """
+    <div class="p-8 pt-16">
+        <h1 class="text-3xl font-bold">LensConnect</h1>
+        <p class="text-slate-400 mb-8">Buy Data, SMS, Minutes</p>
+        <form method="post" class="space-y-4">
+            <input name="email" type="email" placeholder="Email" required class="w-full px-4 py-3 bg-slate-800 border-slate-700 rounded-xl">
+            <input name="password" type="password" placeholder="Password" required class="w-full px-4 py-3 bg-slate-800 border-slate-700 rounded-xl">
+            <button class="w-full py-3 font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700">Signup</button>
+        </form>
+        <p class="text-sm text-center mt-4">Have an account? <a href="/login" class="text-emerald-400 font-semibold">Login</a></p>
+    </div>
+    """
+    return page(content, False)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -166,31 +128,130 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
             return redirect('/dashboard')
-        return render_template_string(BASE_LAYOUT, content=AUTH_CONTENT.format(form_content="Invalid login. <a href='/login'>Try again</a>"), show_nav=False)
-    return render_template_string(BASE_LAYOUT, content=AUTH_CONTENT.format(form_content=LOGIN_FORM), show_nav=False)
+        return page("<div class='p-8'>Invalid login. <a href='/login' class='text-emerald-400'>Try again</a></div>", False)
+    content = """
+    <div class="p-8 pt-16">
+        <h1 class="text-3xl font-bold">LensConnect</h1>
+        <p class="text-slate-400 mb-8">Buy Data, SMS, Minutes</p>
+        <form method="post" class="space-y-4">
+            <input name="email" type="email" placeholder="Email" required class="w-full px-4 py-3 bg-slate-800 border-slate-700 rounded-xl">
+            <input name="password" type="password" placeholder="Password" required class="w-full px-4 py-3 bg-slate-800 border-slate-700 rounded-xl">
+            <button class="w-full py-3 font-bold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700">Login</button>
+        </form>
+        <p class="text-sm text-center mt-4">No account? <a href="/signup" class="text-emerald-400 font-semibold">Signup</a></p>
+    </div>
+    """
+    return page(content, False)
 
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session: return redirect('/login')
     user = User.query.get(session['user_id'])
-    return render_template_string(BASE_LAYOUT, content=DASHBOARD_CONTENT.format(email=user.email.split('@')[0], balance=f"{user.balance:.2f}"), show_nav=True)
+    content = f"""
+    <div class="p-4">
+        <div class="flex justify-between items-center mb-4">
+            <p class="text-lg font-semibold">Hello {user.email.split('@')[0]} 👋</p>
+            <a href="/logout"><i data-lucide="log-out" class="w-6 h-6 text-slate-400"></i></a>
+        </div>
+        <div class="bg-slate-800/60 backdrop-blur-xl border-slate-700 p-5 rounded-2xl shadow-lg">
+            <p class="text-sm text-slate-400">Wallet Balance</p>
+            <p class="text-5xl font-bold my-2 text-emerald-400">Ksh {user.balance:,.2f}</p>
+            <div class="flex gap-3 mt-4">
+                <button class="flex-1 bg-slate-700 py-2 rounded-lg text-sm">Statement</button>
+                <a href="/bundles" class="flex-1 bg-emerald-600 py-2 rounded-lg text-sm text-center font-semibold">Top Up</a>
+            </div>
+        </div>
+        <div class="bg-slate-800/60 backdrop-blur-xl border-slate-700 p-4 rounded-2xl mt-6">
+            <div class="flex justify-between items-center mb-3"><p class="font-semibold">Quick Actions</p><a href="/bundles" class="text-sm text-emerald-400">Manage</a></div>
+            <div class="grid grid-cols-4 gap-4 text-center">
+                <a href="/bundles?tab=data" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center"><i data-lucide="smartphone" class="w-7 h-7 text-emerald-400"></i></div><span class="text-xs text-slate-400">Data</span></a>
+                <a href="/bundles?tab=minutes" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center"><i data-lucide="phone" class="w-7 h-7 text-slate-400"></i></div><span class="text-xs text-slate-400">Minutes</span></a>
+                <a href="/bundles?tab=sms" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center"><i data-lucide="message-square" class="w-7 h-7 text-slate-400"></i></div><span class="text-xs text-slate-400">SMS</span></a>
+                <a href="/bundles?tab=tunukiwa" class="flex flex-col items-center gap-1"><div class="w-14 h-14 bg-slate-700 rounded-full flex items-center justify-center"><i data-lucide="zap" class="w-7 h-7 text-slate-400"></i></div><span class="text-xs text-slate-400">Tunukiwa</span></a>
+            </div>
+        </div>
+    </div>
+    """
+    return page(content, True, 'home')
 
 @app.route('/bundles')
 def bundles():
     if 'user_id' not in session: return redirect('/login')
     tab = request.args.get('tab', 'data')
-    if tab == 'data': items = {k: v for k, v in PRICES.items() if 'MB' in v or 'GB' in v and 'SMS' not in v and 'MINS' not in v}
+    if tab == 'data': items = {k: v for k, v in PRICES.items() if 'MB' in v or 'GB' in v and 'SMS' not in v and 'MINS' not in v and 'TUNUKIWA' not in v}
     elif tab == 'minutes': items = {k: v for k, v in PRICES.items() if 'MINS' in v}
     elif tab == 'sms': items = {k: v for k, v in PRICES.items() if 'SMS' in v}
     else: items = {k: v for k, v in PRICES.items() if 'TUNUKIWA' in v}
-    sorted_items = sorted(items.items())
-    return render_template_string(BASE_LAYOUT, content=render_template_string(BUNDLES_PAGE, bundles=sorted_items, tab=tab), show_nav=True)
+    
+    items_html = ""
+    for amount, name in sorted(items.items()):
+        items_html += f"""
+        <form action="/stkpush" method="post" class="bg-slate-800/60 backdrop-blur-xl border border-slate-700 p-4 rounded-xl flex justify-between items-center shadow-sm">
+            <input type="hidden" name="amount" value="{amount}">
+            <div>
+                <p class="font-bold">{name}</p>
+                <p class="text-sm text-slate-400">Valid: {name.split(' ')[-1]}</p>
+            </div>
+            <div class="text-right">
+                 <p class="font-bold text-emerald-400">Ksh {amount}</p>
+                 <input name="phone" type="tel" placeholder="2547XX" required class="w-24 mt-1 px-2 py-1 bg-slate-900 border-slate-700 rounded-lg text-xs text-center">
+            </div>
+        </form>
+        """
+    content = f"""
+    <div class="p-4">
+        <a href="/dashboard" class="flex items-center gap-2 mb-4 text-slate-400"><i data-lucide="arrow-left"></i> Back</a>
+        <div class="flex border-b border-slate-700 mb-4">
+            <a href="/bundles?tab=data" class="flex-1 py-2 text-center font-semibold {'border-b-2 border-emerald-400 text-emerald-400' if tab=='data' else 'text-slate-400'}">Data</a>
+            <a href="/bundles?tab=minutes" class="flex-1 py-2 text-center font-semibold {'border-b-2 border-emerald-400 text-emerald-400' if tab=='minutes' else 'text-slate-400'}">Minutes</a>
+            <a href="/bundles?tab=sms" class="flex-1 py-2 text-center font-semibold {'border-b-2 border-emerald-400 text-emerald-400' if tab=='sms' else 'text-slate-400'}">SMS</a>
+            <a href="/bundles?tab=tunukiwa" class="flex-1 py-2 text-center font-semibold {'border-b-2 border-emerald-400 text-emerald-400' if tab=='tunukiwa' else 'text-slate-400'}">Tunukiwa</a>
+        </div>
+        <div class="space-y-3">
+            {items_html}
+        </div>
+    </div>
+    """
+    return page(content, True, 'bundles')
+
+@app.route('/ai-insights')
+def ai_insights():
+    if 'user_id' not in session: return redirect('/login')
+    content = f"""
+    <div class="p-4">
+        <p class="text-2xl font-bold mb-4">AI Market Watch</p>
+        <div class="space-y-4">
+            <div class="bg-slate-800/60 backdrop-blur-xl border-slate-700 p-4 rounded-2xl">
+                <p class="text-sm text-slate-400">Hot Right Now</p>
+                <p class="text-2xl font-bold">{AI_INSIGHTS['hot_bundle']} <span class="text-emerald-400 text-lg">+{AI_INSIGHTS['trend_pct']}%</span></p>
+            </div>
+            <div class="bg-slate-800/60 backdrop-blur-xl border-slate-700 p-4 rounded-2xl">
+                <p class="text-sm text-slate-400">Spend Forecast This Week</p>
+                <p class="text-2xl font-bold">Ksh {AI_INSIGHTS['forecast']:,.2f}</p>
+            </div>
+            <div class="bg-slate-800/60 backdrop-blur-xl border-red-500/30 p-4 rounded-2xl">
+                <p class="text-sm text-slate-400">Price Alert</p>
+                <p class="text-lg font-semibold text-red-400">{AI_INSIGHTS['alert']}</p>
+            </div>
+            <form action="/stkpush" method="post" class="bg-slate-800/60 backdrop-blur-xl border-slate-700 p-4 rounded-2xl">
+                <p class="font-semibold mb-2">Smart Rebuy</p>
+                <input type="hidden" name="amount" value="99">
+                <input name="phone" type="tel" placeholder="2547XX" required class="w-full px-4 py-2 bg-slate-900 border-slate-700 rounded-lg mb-2">
+                <button class="w-full bg-emerald-600 py-2 rounded-lg font-bold">Rebuy 1GB 24HRS - Ksh 99</button>
+            </form>
+        </div>
+    </div>
+    """
+    return page(content, True, 'ai')
 
 @app.route('/stkpush', methods=['POST'])
 def stkpush():
     if 'user_id' not in session: return redirect('/login')
-    phone = request.form['phone'] if 'phone' in request.form else '254700000' # For testing
+    phone = request.form['phone'] 
     amount = int(request.form['amount'])
+    user = User.query.get(session['user_id'])
+    if user and not user.phone: user.phone = phone; db.session.commit()
+
     access_token = get_access_token()
     if not access_token: return "Error getting token"
     api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
@@ -198,7 +259,8 @@ def stkpush():
     password = base64.b64encode((BUSINESS_SHORT_CODE + PASSKEY + timestamp).encode()).decode('utf-8')
     payload = {"BusinessShortCode": BUSINESS_SHORT_CODE, "Password": password, "Timestamp": timestamp, "TransactionType": "CustomerPayBillOnline", "Amount": amount, "PartyA": phone, "PartyB": BUSINESS_SHORT_CODE, "PhoneNumber": phone, "CallBackURL": CALLBACK_URL, "AccountReference": "LensConnect", "TransactionDesc": PRICES.get(amount)}
     requests.post(api_url, json=payload, headers={"Authorization": f"Bearer {access_token}"})
-    return render_template_string(BASE_LAYOUT, content=f"<div class='p-8 text-center'><i data-lucide='check-circle' class='w-16 h-16 text-green-500 mx-auto'></i><p class='mt-4 font-semibold'>STK sent for {PRICES.get(amount)}</p><a href='/bundles' class='text-green-600 mt-2 block'>Back to Bundles</a></div>", show_nav=True)
+    content = f"<div class='p-8 text-center'><i data-lucide='check-circle' class='w-16 h-16 text-emerald-400 mx-auto'></i><p class='mt-4 font-semibold'>STK sent for {PRICES.get(amount)}</p><a href='/bundles' class='text-emerald-400 mt-2 block'>Back to Bundles</a></div>"
+    return page(content, True, 'bundles')
 
 @app.route('/mpesa/confirmation', methods=['POST'])
 def mpesa_confirmation():
@@ -209,11 +271,13 @@ def mpesa_confirmation():
         mpesa_code = next(item['Value'] for item in callback if item['Name'] == 'MpesaReceiptNumber')
         phone = str(next(item['Value'] for item in callback if item['Name'] == 'PhoneNumber'))
         bundle_name = PRICES.get(amount, "UNKNOWN")
+        
         if not Transaction.query.filter_by(mpesa_code=mpesa_code).first():
             txn = Transaction(phone=phone, amount=amount, bundle_name=bundle_name, mpesa_code=mpesa_code)
             db.session.add(txn)
-            user = User.query.get(session.get('user_id')) 
-            if user: user.balance += amount
+            user = User.query.filter_by(phone=phone).first()
+            if user and user.balance >= amount:
+                user.balance -= amount
             db.session.commit()
             process_bundle(phone, amount, mpesa_code)
         return jsonify({"ResultCode": 0, "ResultDesc": "Accepted"})
