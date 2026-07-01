@@ -11,10 +11,10 @@ from reportlab.pdfgen import canvas
 
 load_dotenv()
 
-# ===== 1. REAL DB LAYER =====
+# ===== 1. REAL DB LAYER: POSTGRES + MONGODB =====
 DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
 class Search(Base):
@@ -29,22 +29,22 @@ Base.metadata.create_all(bind=engine)
 
 mongo_client = MongoClient(os.getenv("MONGO_URL"))
 mongo_db = mongo_client["marketlens"]
-reviews_col = mongo_db["reviews"] # Store scraped reviews here
+reviews_col = mongo_db["reviews"]
 
 def get_db():
     db = SessionLocal()
     try: yield db
     finally: db.close()
 
-# ===== 2. REAL DATA LAYERS =====
+# ===== 2. REAL DATA LAYERS: SERPAPI + REDDIT =====
 from serpapi import GoogleSearch
 import praw
 from bs4 import BeautifulSoup
 import requests
 
 def get_real_market_data(query: str, city: str):
-    """Layer 3: Quantitative Data Layer - Real Google Trends + Prices"""
-    params = {"engine": "google_trends", "q": query, "location": f"Kenya", "api_key": os.getenv("SERPAPI_KEY")}
+    """Layer 3: Quantitative Data Layer"""
+    params = {"engine": "google_trends", "q": query, "location": "Kenya", "api_key": os.getenv("SERPAPI_KEY")}
     search = GoogleSearch(params)
     trends = search.get_dict().get("interest_over_time", {}).get("timeline_data", [])
     demand = "Rising" if len(trends) > 1 and trends[-1]['values'][0]['value'] > trends[0]['values'][0]['value'] else "Stable"
@@ -56,20 +56,18 @@ def get_real_market_data(query: str, city: str):
 
     return {
         "query": query, "city": city, "demand_level": demand,
-        "market_size": "Requires paid API: Statista/Similarweb", # Real = buy data
+        "market_size": "Requires paid API: Statista/Similarweb",
         "competitors": [r['title'] for r in shop[:5]],
         "price_range": price_range
     }
 
 def get_real_consumer_voice(query: str):
-    """Layer 2: Consumer Voice Aggregator - Real Reddit + Reviews"""
+    """Layer 2: Consumer Voice Aggregator"""
     reddit = praw.Reddit(client_id=os.getenv("REDDIT_CLIENT_ID"), client_secret=os.getenv("REDDIT_CLIENT_SECRET"), user_agent="MarketLens")
     posts = [p.title + " + p.selftext for p in reddit.subreddit("Kenya").search(query, limit=20)]
 
-    # Save to Mongo
     reviews_col.insert_many([{"source": "reddit", "text": t, "query": query, "created_at": datetime.utcnow()} for t in posts])
 
-    # Simple sentiment
     pos_words = ["good","love","best","cheap","fast"]
     neg_words = ["bad","hate","expensive","slow","scam"]
     pos = sum(any(w in t.lower() for w in pos_words) for t in posts)
@@ -77,12 +75,12 @@ def get_real_consumer_voice(query: str):
     total = len(posts) or 1
     return {"positive": int(pos/total*100), "neutral": 100-int((pos+neg)/total*100), "negative": int(neg/total*100), "summary": " ".join(posts[:3])[:300]}
 
-# ===== 3. REAL AI LAYER =====
+# ===== 3. REAL AI LAYER: OPENAI =====
 from openai import OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def get_real_ai_insight(query: str, city: str, data: dict, sentiment: dict):
-    """Layer 4: AI Insight Generator - Real OpenAI"""
+    """Layer 4: AI Insight Generator"""
     prompt = f"""
     You are a Decision Intelligence AI for MarketLens.
     Idea: {query} in {city}
@@ -118,8 +116,8 @@ def build_pdf_report(query, city, data, sentiment, ai_text):
     p.save(); buffer.seek(0)
     return buffer
 
-# ===== 5. REAL GLASS UI - ALL SCREENS YOU LISTED =====
-app = FastAPI()
+# ===== 5. REAL GLASS UI - ALL 7 SCREENS YOU LISTED =====
+app = FastAPI(title="MarketLens")
 BASE = """<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>MarketLens</title><script src="https://cdn.tailwindcss.com"></script><script src="https://unpkg.com/lucide@latest"></script><style>body{background:#0F172A;font-family:Inter}.glass{background:rgba(30,41,59,.6);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1)}.accent{color:#34D399}</style></head><body class="pb-24 text-slate-200"><div class="max-w-2xl mx-auto p-4">{}</div><nav class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[95%] max-w-md glass rounded-2xl flex justify-around py-3">{}</nav><script>lucide.createIcons()</script></body></html>"""
 NAV = '<a href="/" class="flex flex-col items-center {}"><i data-lucide="search" class="w-6 h-6"></i><span class="text-xs">Search</span></a><a href="/reports" class="flex flex-col items-center {}"><i data-lucide="file-text" class="w-6 h-6"></i><span class="text-xs">Reports</span></a><a href="/knowledge" class="flex flex-col items-center {}"><i data-lucide="book" class="w-6 h-6"></i><span class="text-xs">KB</span></a><a href="#" class="flex flex-col items-center text-slate-400"><i data-lucide="user" class="w-6 h-6"></i><span class="text-xs">Profile</span></a>'
 
@@ -162,4 +160,4 @@ def category(cat:str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
