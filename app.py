@@ -163,20 +163,6 @@ class IndustryReport(Base):
     id = Column(Integer, primary_key=True)
     sector = Column(String)
     sub_sector = Column(String)
-    def get_competitors(idea, location):
-    if SERPAPI_KEY == "demo":
-        return [{"name": f"{idea} Ltd {location}", "price": "Ksh 120-200", "link": "#", "rating": 4.2}]
-    url = "https://serpapi.com/search.json"
-    params = {
-        "engine": "google",
-        "q": f"{idea} {location} Kenya",
-        "api_key": SERPAPI_KEY,
-        "num": 5
-    }
-    resp = requests.get(url, params=params, timeout=10)
-    data = resp.json()
-    results = data.get("organic_results", [])[:5]
-    return [{"name": r.get("title", "N/A")[:60], "link": r.get("link"), "price": "Ksh N/A"} for r in results]
     org_id = Column(Integer, ForeignKey("users.id"))
     name = Column(String)
     config = Column(JSON) # tracks sentiment, competitors, price monitoring
@@ -244,19 +230,6 @@ def base_html(title, content, user=None, active=""):
     return f"""
     <!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>{title} | LensConnect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#0F172A">
-    <style>body{{background:#0F172A;font-family:'Inter',sans-serif}}::-webkit-scrollbar{{width:8px}}::-webkit-scrollbar-thumb{{background:#334155;border-radius:4px}}</style>
-    </head><body class="text-slate-200 pb-24 md:pb-4">
-    <div class="max-w-7xl mx-auto min-h-screen p-4 md:p-8">{content}</div>
-    {nav}
-    <script>if('serviceWorker' in navigator){{navigator.serviceWorker.register('/static/sw.js')}}</script>
-    </body></html>
-    """
-
 # ===== ROUTES = ALL 7 MODULES + UI SCREENS + 9 REVENUE STREAMS =====
 @app.get("/", response_class=HTMLResponse)
 def landing():
